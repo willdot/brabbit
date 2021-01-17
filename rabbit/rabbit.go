@@ -29,7 +29,7 @@ func (r *RabbitPublisher) Shutdown() {
 }
 
 // Publish will send a given message onto a given queue or exchange
-func (r *RabbitPublisher) Publish(queueName, exchange string, msg []byte, headers map[string]interface{}) error {
+func (r *RabbitPublisher) Publish(queueName string, msg []byte, headers map[string]interface{}) error {
 	// open a channel
 	c, err := r.connection.Channel()
 	if err != nil {
@@ -42,6 +42,7 @@ func (r *RabbitPublisher) Publish(queueName, exchange string, msg []byte, header
 		log.Fatalf("failed to declare queue: %s", err.Error())
 	}
 
+	const exchange = ""
 	err = c.Publish(exchange, queueName, false, false, amqp.Publishing{
 		Headers:     headers,
 		ContentType: "application/json",

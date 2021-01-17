@@ -4,7 +4,7 @@ import "github.com/pkg/errors"
 
 // Publisher defines the functions required to send messages to rabbit
 type Publisher interface {
-	Publish(queueName, exchange string, body []byte, headers map[string]interface{}) error
+	Publish(queueName string, body []byte, headers map[string]interface{}) error
 }
 
 // Service handles sending messages to rabbit
@@ -19,14 +19,22 @@ func NewService(publisher Publisher) *Service {
 	}
 }
 
+// Request is a request to send a message to rabbit
+type Request struct {
+	Queue   string
+	Body    []byte
+	Headers map[string]interface{}
+	Repeat  int
+}
+
 // SendMessage will send a given message to rabbit for requested number of times
-func (p *Service) SendMessage(body []byte, headers map[string]interface{}, repeat int) error {
-	if body == nil {
+func (p *Service) SendMessage(r Request) error {
+	if r.Body == nil {
 		return errors.New("no body provided")
 	}
 
-	for i := 0; i < repeat; i++ {
-		err := p.publisher.Publish("test", "", body, headers)
+	for i := 0; i < r.Repeat; i++ {
+		err := p.publisher.Publish(r.Queue, r.Body, r.Headers)
 		if err != nil {
 			return errors.Wrapf(err, "error sending message %v", i)
 		}

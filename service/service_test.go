@@ -14,7 +14,7 @@ type publisherMock struct {
 	messages []message
 }
 
-func (pm *publisherMock) Publish(queueName, exchange string, body []byte, headers map[string]interface{}) error {
+func (pm *publisherMock) Publish(queueName string, body []byte, headers map[string]interface{}) error {
 	pm.messages = append(pm.messages, message{
 		body:    body,
 		headers: headers,
@@ -44,8 +44,13 @@ func TestSendMessage(t *testing.T) {
 			mock := &publisherMock{}
 
 			serv := NewService(mock)
+			req := Request{
+				Body:    tc.body,
+				Headers: tc.headers,
+				Repeat:  tc.messagesToSend,
+			}
 
-			err := serv.SendMessage(body, headers, tc.messagesToSend)
+			err := serv.SendMessage(req)
 
 			if err != nil {
 				t.Fatalf("wasn't expecting an error but got one: %v", err)
@@ -72,8 +77,9 @@ func TestSendMessageWithoutBody(t *testing.T) {
 	mock := &publisherMock{}
 
 	serv := NewService(mock)
+	req := Request{Repeat: 1}
 
-	err := serv.SendMessage(nil, nil, 1)
+	err := serv.SendMessage(req)
 
 	if err == nil {
 		t.Fatalf("expecting error for not providing body, but didn't get one")

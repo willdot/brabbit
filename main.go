@@ -12,26 +12,26 @@ import (
 )
 
 func main() {
-
+	queue := flag.String("queue", "", "t'he queue to send the message to")
 	bodyFileName := flag.String("body", "", "the file name of the body to send in the message")
 	headersFileName := flag.String("headers", "", "the file name of the header to send in the message (optional)")
 	repeat := flag.Int("repeat", 1, "the number of times to send the message")
 	flag.Parse()
 
-	if bodyFileName == nil {
+	if *queue == "" {
+		log.Fatalf("please provide a queue to send the message to")
+	}
+
+	if *bodyFileName == "" {
 		log.Fatalf("please provide the body flag")
 	}
 
-	if headersFileName == nil {
-		*headersFileName = ""
-	}
-
-	if err := run(*bodyFileName, *headersFileName, *repeat); err != nil {
+	if err := run(*queue, *bodyFileName, *headersFileName, *repeat); err != nil {
 		log.Fatalf("error running: %s", err.Error())
 	}
 }
 
-func run(bodyFileName, headersFileName string, repeat int) error {
+func run(queue, bodyFileName, headersFileName string, repeat int) error {
 	publisher := rabbit.NewRabbitPublisher()
 	defer publisher.Shutdown()
 
@@ -56,7 +56,14 @@ func run(bodyFileName, headersFileName string, repeat int) error {
 		}
 	}
 
-	err = srv.SendMessage(body, headers, repeat)
+	req := service.Request{
+		Body:    body,
+		Headers: headers,
+		Repeat:  repeat,
+		Queue:   queue,
+	}
+
+	err = srv.SendMessage(req)
 	if err != nil {
 		return fmt.Errorf("error calling publish: %s", err.Error())
 	}
