@@ -14,9 +14,9 @@ type publisherMock struct {
 	messages []message
 }
 
-func (pm *publisherMock) Publish(queueName, exchange string, msg []byte, headers map[string]interface{}) error {
+func (pm *publisherMock) Publish(queueName, exchange string, body []byte, headers map[string]interface{}) error {
 	pm.messages = append(pm.messages, message{
-		body:    msg,
+		body:    body,
 		headers: headers,
 	})
 
@@ -25,23 +25,27 @@ func (pm *publisherMock) Publish(queueName, exchange string, msg []byte, headers
 func TestSendMessage(t *testing.T) {
 
 	tt := map[string]struct {
+		body           []byte
+		headers        map[string]interface{}
 		messagesToSend int
 	}{
-		"one": {messagesToSend: 1},
-		"two": {messagesToSend: 2},
-		"ten": {messagesToSend: 10},
+		"one":              {body: []byte("one"), headers: map[string]interface{}{"one": 1}, messagesToSend: 1},
+		"two":              {body: []byte("two"), headers: map[string]interface{}{"two": 2}, messagesToSend: 2},
+		"ten":              {body: []byte("ten"), headers: map[string]interface{}{"ten": 10}, messagesToSend: 10},
+		"no headers":       {body: []byte("no headers"), messagesToSend: 1},
+		"multiple headers": {body: []byte("lots of headers"), headers: map[string]interface{}{"one": 1, "two": 2}, messagesToSend: 1},
 	}
 
 	for name, tc := range tt {
 		t.Run(name, func(t *testing.T) {
-			msg := []byte("testing testing, 1.2.3")
+			body := []byte("testing testing, 1.2.3")
 			headers := map[string]interface{}{"hello": "goodbye"}
 
 			mock := &publisherMock{}
 
 			serv := NewService(mock)
 
-			err := serv.SendMessage(msg, headers, tc.messagesToSend)
+			err := serv.SendMessage(body, headers, tc.messagesToSend)
 
 			if err != nil {
 				t.Fatalf("wasn't expecting an error but got one: %v", err)
@@ -52,8 +56,8 @@ func TestSendMessage(t *testing.T) {
 			}
 
 			for i := 0; i < tc.messagesToSend; i++ {
-				if !reflect.DeepEqual(mock.messages[i].body, msg) {
-					t.Fatalf("expecting body '%s' but got '%s'", msg, mock.messages[0].body)
+				if !reflect.DeepEqual(mock.messages[i].body, body) {
+					t.Fatalf("expecting body '%s' but got '%s'", body, mock.messages[0].body)
 				}
 
 				if !reflect.DeepEqual(mock.messages[i].headers, headers) {
@@ -61,5 +65,17 @@ func TestSendMessage(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestSendMessageWithoutBody(t *testing.T) {
+	mock := &publisherMock{}
+
+	serv := NewService(mock)
+
+	err := serv.SendMessage(nil, nil, 1)
+
+	if err == nil {
+		t.Fatalf("expecting error for not providing body, but didn't get one")
 	}
 }
