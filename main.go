@@ -31,7 +31,8 @@ func (i *arrayFlags) Set(value string) error {
 }
 
 func main() {
-	queue := flag.String("queue", "", "t'he queue to send the message to")
+	queue := flag.String("queue", "", "the queue to send the message to")
+	exchange := flag.String("exchange", "", "the exchange to send the message to")
 	bodyFileName := flag.String("body", "", "the file name of the body to send in the message")
 	headersFileName := flag.String("headers", "", "the file name of the header to send in the message (optional)")
 	repeat := flag.Int("repeat", 1, "the number of times to send the message")
@@ -41,8 +42,8 @@ func main() {
 
 	flag.Parse()
 
-	if *queue == "" {
-		log.Fatalf("please provide a queue to send the message to")
+	if (*queue == "" && *exchange == "") || (*queue != "" && *exchange != "") {
+		log.Fatalf("please provide either a queue or exchange to send the message to.")
 	}
 
 	if len(bodyFileNames) == 0 && *bodyFileName == "" {
@@ -54,12 +55,12 @@ func main() {
 		bodyFileNames = append(bodyFileNames, *bodyFileName)
 	}
 
-	if err := run(*queue, *headersFileName, bodyFileNames, *repeat); err != nil {
+	if err := run(*queue, *exchange, *headersFileName, bodyFileNames, *repeat); err != nil {
 		log.Fatalf("error running: %s", err.Error())
 	}
 }
 
-func run(queue, headersFileName string, bodyFilenames []string, repeat int) error {
+func run(queue, exchange, headersFileName string, bodyFilenames []string, repeat int) error {
 	publisher := rabbit.NewRabbitPublisher()
 	defer publisher.Shutdown()
 
@@ -86,10 +87,11 @@ func run(queue, headersFileName string, bodyFilenames []string, repeat int) erro
 
 	for _, body := range bodies {
 		req := service.Request{
-			Body:    body,
-			Headers: headers,
-			Repeat:  repeat,
-			Queue:   queue,
+			Body:     body,
+			Headers:  headers,
+			Repeat:   repeat,
+			Queue:    queue,
+			Exchange: exchange,
 		}
 
 		err = srv.SendMessage(req)

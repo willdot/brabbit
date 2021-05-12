@@ -29,7 +29,37 @@ func (r *RabbitPublisher) Shutdown() {
 }
 
 // Publish will send a given message onto a given queue or exchange
-func (r *RabbitPublisher) Publish(queueName string, msg []byte, headers map[string]interface{}) error {
+func (r *RabbitPublisher) Publish(queueName, exchange string, msg []byte, headers map[string]interface{}) error {
+	if exchange == "" {
+		return r.publishToQueue(queueName, msg, headers)
+	}
+
+	// open a channel
+	c, err := r.connection.Channel()
+	if err != nil {
+		log.Fatalf("failed to open channel: %s", err.Error())
+	}
+	defer c.Close()
+
+	err = c.ExchangeDeclarePassive(exchange, "headers", false, false, false, false, nil)
+	if err != nil {
+		log.Fatalf("failed to declare exchange: %s", err.Error())
+	}
+
+	err = c.Publish(exchange, "", false, false, amqp.Publishing{
+		Headers:     headers,
+		ContentType: "application/json",
+		Body:        msg,
+	})
+
+	if err != nil {
+		return errors.Wrapf(err, "failed to publish message to exchange '%s': %s", exchange, err.Error())
+	}
+
+	return nil
+}
+
+func (r *RabbitPublisher) publishToQueue(queueName string, msg []byte, headers map[string]interface{}) error {
 	// open a channel
 	c, err := r.connection.Channel()
 	if err != nil {
@@ -42,15 +72,14 @@ func (r *RabbitPublisher) Publish(queueName string, msg []byte, headers map[stri
 		log.Fatalf("failed to declare queue: %s", err.Error())
 	}
 
-	const exchange = ""
-	err = c.Publish(exchange, queueName, false, false, amqp.Publishing{
+	err = c.Publish("", queueName, false, false, amqp.Publishing{
 		Headers:     headers,
 		ContentType: "application/json",
 		Body:        msg,
 	})
 
 	if err != nil {
-		return errors.Wrapf(err, "failed to publish message to exchange '%s' and queue '%s': %s", exchange, queue.Name, err.Error())
+		return errors.Wrapf(err, "failed to publish message to queue '%s': %s", queue.Name, err.Error())
 	}
 
 	return nil
