@@ -4,7 +4,7 @@ import "github.com/pkg/errors"
 
 // Publisher defines the functions required to send messages to rabbit
 type Publisher interface {
-	Publish(queueName string, body []byte, headers map[string]interface{}) error
+	Publish(queueName, exchange string, body []byte, headers map[string]interface{}) error
 }
 
 // Service handles sending messages to rabbit
@@ -21,10 +21,11 @@ func NewService(publisher Publisher) *Service {
 
 // Request is a request to send a message to rabbit
 type Request struct {
-	Queue   string
-	Body    []byte
-	Headers map[string]interface{}
-	Repeat  int
+	Queue    string
+	Exchange string
+	Body     []byte
+	Headers  map[string]interface{}
+	Repeat   int
 }
 
 // SendMessage will send a given message to rabbit for requested number of times
@@ -34,7 +35,7 @@ func (p *Service) SendMessage(r Request) error {
 	}
 
 	for i := 0; i < r.Repeat; i++ {
-		err := p.publisher.Publish(r.Queue, r.Body, r.Headers)
+		err := p.publisher.Publish(r.Queue, r.Exchange, r.Body, r.Headers)
 		if err != nil {
 			return errors.Wrapf(err, "error sending message %v", i)
 		}
