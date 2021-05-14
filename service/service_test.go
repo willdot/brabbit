@@ -14,7 +14,7 @@ type publisherMock struct {
 	messages []message
 }
 
-func (pm *publisherMock) Publish(queueName string, body []byte, headers map[string]interface{}) error {
+func (pm *publisherMock) Publish(queueName, exchange string, body []byte, headers map[string]interface{}) error {
 	pm.messages = append(pm.messages, message{
 		body:    body,
 		headers: headers,
@@ -38,8 +38,6 @@ func TestSendMessage(t *testing.T) {
 
 	for name, tc := range tt {
 		t.Run(name, func(t *testing.T) {
-			body := []byte("testing testing, 1.2.3")
-			headers := map[string]interface{}{"hello": "goodbye"}
 
 			mock := &publisherMock{}
 
@@ -61,12 +59,12 @@ func TestSendMessage(t *testing.T) {
 			}
 
 			for i := 0; i < tc.messagesToSend; i++ {
-				if !reflect.DeepEqual(mock.messages[i].body, body) {
-					t.Fatalf("expecting body '%s' but got '%s'", body, mock.messages[0].body)
+				if !reflect.DeepEqual(mock.messages[i].body, tc.body) {
+					t.Fatalf("expecting body '%s' but got '%s'", tc.body, mock.messages[0].body)
 				}
 
-				if !reflect.DeepEqual(mock.messages[i].headers, headers) {
-					t.Fatalf("expected headers to be '%+v', but got '%+v'", headers, mock.messages[0].headers)
+				if !reflect.DeepEqual(mock.messages[i].headers, tc.headers) {
+					t.Fatalf("expected headers to be '%+v', but got '%+v'", tc.headers, mock.messages[0].headers)
 				}
 			}
 		})
